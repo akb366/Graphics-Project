@@ -13,13 +13,35 @@
 				top: 50%;
 				left: 50%;
 				transform: translate(-50%, -50%);
+				background-color: grey;
+				padding: 20px;
+				width: 250px;
+			}
+
+			#end-screen {
+				display: none; /* Initially hide the shop menu */
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
 				background-color: rgba(255, 255, 255, 0.8);
 				padding: 20px;
 			}
 
+			#health {
+				position: absolute;
+				display: none;
+				top: 10px;
+				left: 10px;
+				color: white;
+				font-family: Arial, sans-serif;
+				font-size: 20px;
+			}
+
 			#energy {
 				position: absolute;
-				top: 10px;
+				display: none;
+				top: 40px;
 				left: 10px;
 				color: white;
 				font-family: Arial, sans-serif;
@@ -28,6 +50,7 @@
 
 			#scoreArea {
 				position: absolute;
+				display: none;
 				top: 50px;
 				left: 0;
 				right: 0;
@@ -35,34 +58,144 @@
 				margin-right: auto;
 				font-size: 25px;
 				color: white;
-				width: 75px;
+				width: 125px;
 			}
+
+			#login {
+				position: absolute;
+				display: block;
+				top: 250px;
+				left: 0;
+				right: 0;
+				margin: auto;
+				width: 200px;
+			}
+
+			#create-account {
+				position: absolute;
+				display: none;
+				top: 250px;
+				left: 0;
+				right: 0;
+				margin: auto;
+				width: 200px;
+			}
+
+			#special-display {
+				position: absolute;
+				display: none;
+				text-align: center;
+				top: 250px;
+				left: 0;
+				right: 0;
+				margin: auto;
+				width: 200px;
+			}
+
 		</style>
 	</head>
-	<body>
+	<body style="background-color: grey;">
 		<script type="module" src="/main.js"></script>
 
+		<div id="login">
+			<h3 style="color: white; margin-left: 75px;">Login</h3>
+			<form>
+				<input
+					style="width: 200px;"
+					type="text"
+					name="username"
+					id="username"
+					placeholder="Username"
+				/>
+				<input
+					style="width: 200px;"
+					type="password"
+					name="password"
+					id="password"
+					placeholder="Password"
+				/>
+				<input
+					style="margin-left: 80px; margin-top: 5px;"
+					type="button"
+					name="submit"
+					value="Login"
+					id="submit"
+				/>
+				<button id="createButton" type="button" style="margin-left: 50px; margin-top: 5px;">Create Account</button>
+			</form>
+		</div>
+
+		<div id="create-account">
+			<h3 style="color: white; margin-left: 25px;">Create Account</h3>
+			<form>
+				<input
+					style="width: 200px;"
+					type="text"
+					name="create-username"
+					id="create-username"
+					placeholder="Username"
+				/>
+				<input
+					style="width: 200px;"
+					type="password"
+					name="create-password"
+					id="create-password"
+					placeholder="Password"
+				/>
+				<input
+					style="margin-left: 80px; margin-top: 5px;"
+					type="button"
+					name="submit"
+					value="Create"
+					id="create"
+				/>
+			</form>
+		</div>
+
+		<div id="health">Health: 5</div>
 		<div id="energy">Energy: 0</div>
 		<div id="scoreArea">
-			<div id="score">Score:0</div>
+			<div id="score">Score: 0</div>
 		</div>
 
 		<!-- Shop menu -->
 		<div id="shop-menu">
+			<label for="texture-select">Select Ship Texture:</label>
+			<select id="texture-select">
+				<option value="rusty">Rusty</option>
+				<option value="metal">Metal</option>
+				<option value="future">Future</option>
+			</select>
 			<!-- Add content for your shop menu, such as items available for purchase -->
-			<h2>Shop Menu</h2>
-			<div id="texture-selector">
-					<label for="texture-select">Select Ship Texture:</label>
-					<select id="texture-select">
-						<option value="rusty">Rusty</option>
-						<option value="metal">Metal</option>
-						<option value="future">Future</option>
-					</select>
-			</div>
-			<button id="speed-up">Speed Up</button>
-			<button id="laser-cooldown">Laser Cooldown</button>
-			<button id="laser">Laser</button>
+			<h2 style="margin-left: 25%;">Ship Upgrades</h2>
+			<button id="speed-up">Speed Up: 5 Energy</button> <br/>
+			<button id="laser-cooldown">Laser Cooldown: 5 Energy</button>
 			<!-- Add more items as needed -->
+			<p id="notEnough" style="display: none;">Not Enough Energy</p>
+		</div>
+
+		<div id="end-screen">
+			<h2>Game Over</h2>
+			<h3 id="end-score">Score: 10</h3>
+			<button id="reset">Reset</button>
+			<h3 id="high-score">High Score: 5</h3>
+			<h2>Highest Score</h2>
+			<h3 id="world-user">Username</h3>
+			<h3 id="world-high">Score: 500</h3>
+		</div>
+
+		<div id="special-display">
+			<h3>Answer Right For a Reward</h3>
+			<p id="special-question">How do you display something in Python?</p>
+			<input
+				type="text"
+				id="special-answer"
+			/>
+			<input
+				type="hidden"
+				id="hiddenAnswer"
+			/>
+			<button id="special-submit">Submit</button>
 		</div>
 	</body>
 </html>

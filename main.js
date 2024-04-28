@@ -1,7 +1,14 @@
+// Import Three.js library
 import * as THREE from 'three';
 
 // Initialize variables
-let scene, camera, renderer, ship, asteroids = [], lasers = [], energys = [];
+let scene, camera, renderer, ship, asteroids = [], lasers = [], energys = [], special;
+
+let questions = [{question: "How do you display something in Python?", answer: "print"}, {question: "How do you create a comment in Python?", answer: "#"}, 
+    {question: "If variable x is an array of 3 elements, what is the index of the second element?", answer: "1"},
+];
+
+let texture = 'rusty';
 
 // Initialize movement variables
 let moveForward = false;
@@ -25,6 +32,8 @@ let speed = 0.05;
 let hits = 0;
 let energyCount = 0;
 
+let health = 5;
+
 let score = 0;
 let scoreInterval;
 
@@ -32,9 +41,88 @@ let isPaused = false;
 
 let spawnInterval;
 
+let user_id;
 
 // Initialize ship's position
 let shipPosition = new THREE.Vector3(0, 0, 0);
+
+// Set up the scene
+function init() {
+    // Create a scene
+    scene = new THREE.Scene();
+
+    // Load background image
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load('background.png' , function(texture)
+        {
+            scene.background = texture;  
+        });
+
+
+    // Create a camera
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    //camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, 1, 1000 );
+
+    camera.position.set(0, 0, 10);
+    scene.add(camera);
+
+    // Create a renderer
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(0, 10, 10); // Set light direction
+    scene.add(directionalLight);
+
+    // Ambient light to illuminate all objects in the scene equally
+    const ambientLight = new THREE.AmbientLight(0x404040);
+    scene.add(ambientLight);
+
+    ship = createSpaceship(texture);
+    ship.position.z = 4;
+    scene.add(ship);
+
+    // Add event listeners for key presses
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+
+    // Add event listener for shooting
+    document.addEventListener('keydown', onSpaceKeyDown);
+
+    document.getElementById('speed-up').addEventListener("click", speedUp);
+    document.getElementById('laser-cooldown').addEventListener("click", laserCooldownDown);
+
+    document.getElementById('submit').addEventListener("click", handleLogin);
+    document.getElementById('reset').addEventListener("click", resetScene);
+    document.getElementById('create').addEventListener("click", createAccount);
+    document.getElementById('createButton').addEventListener("click", showCreateAccount);
+    document.getElementById('texture-select').addEventListener('change', updateShipTexture);
+}
+
+function updateSpaceship(textureChoice) {
+    // Remove the existing ship from the scene
+    scene.remove(ship);
+
+    // Create a new ship with the updated laser count
+    ship = createSpaceship(textureChoice);
+    ship.position.z = 4;
+    scene.add(ship);
+}
+
+function updateShipTexture() {
+    const textureSelect = document.getElementById('texture-select');
+    const selectedTextureUrl = textureSelect.value;
+
+    const fetchData = JSON.stringify({user_id: user_id, texture: textureSelect.value})
+    fetch("http://localhost:3000/texture", {method: "POST", body: fetchData, headers: {'Content-Type': 'application/json'}})
+    .then(response => response.json())
+    .then(data => {})
+    .catch(error => console.error('Error:', error));
+
+    updateSpaceship(selectedTextureUrl);
+}
+
 function createSpaceship(textureChoice) {
     const shipGroup = new THREE.Group();
 
@@ -158,63 +246,68 @@ function createSpaceship(textureChoice) {
 
     return shipGroup;
 }
-// Set up the scene
-function init() {
-    // Create a scene
-    scene = new THREE.Scene();
-    // Set the position of the plane to be in front of the camera
 
-    // Create a camera
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 0, 10);
-    scene.add(camera);
+function showCreateAccount() {
+    document.getElementById('login').style.display = 'none'
+    document.getElementById('create-account').style.display = 'block'
+}
 
-    // Create a renderer
-    renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+function handleLogin() {
+    const username = document.getElementById('username').value
+    const password = document.getElementById('password').value
 
-    const textureLoader = new THREE.TextureLoader();
-    const backgroundTexture = textureLoader.load('textures/background.jpg');
+    const fetchData = JSON.stringify({username: username, password: password})
+    fetch("http://localhost:3000/login", {method: "POST", body: fetchData, headers: {'Content-Type': 'application/json'}})
+    .then(response => response.json())
+    .then(data => {
+        if (data.length == 0) {
+            console.log("Login Failed")
+        } else {
+            user_id = data[0].user_id;
+            texture = data[0].texture;
+            updateShipTexture(texture);
 
-    const backgroundplaneGeometry = new THREE.BoxGeometry(30, 30);
-    const backgroundplaneMaterial = new THREE.MeshStandardMaterial({map : backgroundTexture });
-    const backgroundplaneMesh = new THREE.Mesh(backgroundplaneGeometry, backgroundplaneMaterial);
-    backgroundplaneMesh.position.z = -3; // Adjust the distance as needed to ensure it's in front of everything
-    
-    // Add the plane to the scene
-    scene.add(backgroundplaneMesh);
-    // Create a directional light
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(0, 10, 10); // Set light direction
-    scene.add(directionalLight);
+            document.getElementById('login').style.display = 'none'
+            document.getElementById('health').style.display = 'block'
+            document.getElementById('energy').style.display = 'block'
+            document.getElementById('scoreArea').style.display = 'block'
 
-    // Ambient light to illuminate all objects in the scene equally
-    const ambientLight = new THREE.AmbientLight(0x404040);
-    scene.add(ambientLight);
+            // Start adding asteroids at regular intervals
+            spawnInterval = setInterval(addRandomAsteroid, interval); // Add an asteroid every 3 seconds
+            scoreInterval = setInterval(updateScore, 1000)
+            animate();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
 
-    ship = createSpaceship('rusty');
-    ship.position.z = 4;
-    scene.add(ship);
+function createAccount() {
+    const username = document.getElementById('create-username').value
+    const password = document.getElementById('create-password').value
 
-    // Add event listeners for key presses
-    document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('keyup', onKeyUp);
+    const fetchData = JSON.stringify({username: username, password: password})
+    fetch("http://localhost:3000/create", {method: "POST", body: fetchData, headers: {'Content-Type': 'application/json'}})
+    .then(response => response.json())
+    .then(data => {
+        if (data.length == 0) {
+            console.log("Login Failed")
+        } else {
+            user_id = data.insertId
 
-    // Add event listener for shooting
-    document.addEventListener('keydown', onSpaceKeyDown);
+            console.log(user_id);
 
-    document.getElementById('speed-up').addEventListener("click", speedUp);
-    document.getElementById('laser-cooldown').addEventListener("click", laserCooldownDown);
-    document.getElementById('laser').addEventListener("click", laserUp);
-    document.getElementById('texture-select').addEventListener('change', updateShipTexture);
+            document.getElementById('create-account').style.display = 'none'
+            document.getElementById('health').style.display = 'block'
+            document.getElementById('energy').style.display = 'block'
+            document.getElementById('scoreArea').style.display = 'block'
 
-    // Start adding asteroids at regular intervals
-    spawnInterval = setInterval(addRandomAsteroid, interval); // Add an asteroid every 3 seconds
-    scoreInterval = setInterval(updateScore, 1000)
-
-    // Start the game loop
-    animate();
+            // Start adding asteroids at regular intervals
+            spawnInterval = setInterval(addRandomAsteroid, interval); // Add an asteroid every 3 seconds
+            scoreInterval = setInterval(updateScore, 1000)
+            animate();
+        }
+    })
+    .catch(error => console.error('Error:', error));
 }
 
 // Function to pause the game
@@ -230,8 +323,92 @@ function pauseGame() {
 
         document.getElementById('shop-menu').style.display = 'none'
 
+        document.getElementById('notEnough').style.display = 'none'
+
         animate();
     }
+}
+
+// Function to pause the game
+function endGame() {
+    isPaused = true;
+
+    document.getElementById('end-screen').style.display = 'block'
+    const fetchData = JSON.stringify({score: score, user_id: user_id})
+    fetch("http://localhost:3000/users", {method: "POST", body: fetchData, headers: {'Content-Type': 'application/json'}})
+    .then(response => response.json())
+    .then(data => {
+        console.log(data)
+        document.getElementById('high-score').textContent = "High Score: " + data.high_score
+        document.getElementById('world-high').textContent = "Score: " + data.bigScore
+        document.getElementById('world-user').textContent = "Username: " + data.bigUser
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function resetScene() {
+
+    // Remove all asteroids and lasers from the scene
+    for (const asteroid of asteroids) {
+        scene.remove(asteroid);
+    }
+    asteroids = [];
+    for (const laser of lasers) {
+        scene.remove(laser);
+    }
+    lasers = [];
+
+    for (const energy of energys) {
+        scene.remove(energy);
+    }
+    energys = [];
+
+    // Reset score
+    score = 0;
+    energyCount = 0;
+    health = 6;
+
+    document.getElementById('score').textContent = 'Score: ' + score;
+
+    updateEnergyCount();
+    updateHealth();
+
+
+    moveForward = false;
+    moveBackward = false;
+    moveLeft = false;
+    moveRight = false;
+
+    shipSpeed = 0.1;
+    laserCount = 1;
+
+    canShoot = true;
+    laserCooldownDuration = 1000;
+    lastShotTime = 0;
+
+    interval = 2000;
+    spawnCount = 0;
+    speed = 0.05;
+    hits = 0;
+
+    scene.remove(ship)
+    ship = createSpaceship(texture);
+    ship.position.copy(shipPosition)
+    scene.add(ship);
+
+    shipPosition.set(0, 0, 0);
+    ship.position.copy(shipPosition);
+
+    document.getElementById('end-screen').style.display = 'none'
+
+    clearInterval(spawnInterval);
+    clearInterval(scoreInterval);
+
+    spawnInterval = setInterval(addRandomAsteroid, interval); // Add an asteroid every 3 seconds
+    scoreInterval = setInterval(updateScore, 1000)
+
+    isPaused = false;
+    animate();
 }
 
 // Event listener functions for key presses
@@ -274,25 +451,33 @@ function onKeyUp(event) {
 
 // Update ship's position based on key presses
 function updateShipPosition() {
-    if (isPaused) { return }
+    if (isPaused) {return}
     if (moveForward) {
-        shipPosition.y += shipSpeed;
+        if (shipPosition.y < 7.20) {
+            shipPosition.y += shipSpeed;
+        }
     }
     if (moveBackward) {
-        shipPosition.y -= shipSpeed;
+        if (shipPosition.y > -7.20) {
+            shipPosition.y -= shipSpeed;
+        }
     }
     if (moveLeft) {
-        shipPosition.x -= shipSpeed;
+        if (shipPosition.x > -15) {
+            shipPosition.x -= shipSpeed;
+        }
     }
     if (moveRight) {
-        shipPosition.x += shipSpeed;
+        if (shipPosition.x < 15) {
+            shipPosition.x += shipSpeed;
+        }
     }
     ship.position.copy(shipPosition);
 }
 
 // Add a random asteroid to the scene
 function addRandomAsteroid() {
-    if (isPaused) { return }
+    if (isPaused) {return}
 
     if (spawnCount % 5 == 0) {
         const asteroidGeometry = new THREE.SphereGeometry(1.0);
@@ -307,14 +492,14 @@ function addRandomAsteroid() {
         // Randomly choose left or right side
         const side = Math.random() < 0.5 ? -1 : 1;
 
-        const xPos = side * Math.random() * window.innerWidth;
+        const xPos = side * Math.random() * 10;
 
-        const yPos = window.innerHeight;
+        const yPos = 10;
 
         const zPos = ship.position.z;
 
         asteroid1.position.set(xPos, yPos, zPos);
-        asteroid2.position.set(xPos + (Math.random() * 5) + 3, yPos, zPos);
+        asteroid2.position.set(xPos + (Math.random() * 5) + 3, yPos + 3, zPos);
         scene.add(asteroid1);
         scene.add(asteroid2)
 
@@ -322,11 +507,11 @@ function addRandomAsteroid() {
         asteroids.push(asteroid2);
     } else {
         const asteroidGeometry = new THREE.SphereGeometry(1);
-
         const textureLoader = new THREE.TextureLoader();
         const asteroidtexture = textureLoader.load('textures/asteroid.jpg');
 
         const asteroidMaterial = new THREE.MeshStandardMaterial({ map: asteroidtexture });
+
         const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
 
         // Randomly choose left or right side
@@ -344,9 +529,10 @@ function addRandomAsteroid() {
     }
 
     spawnCount += 1;
-
-    if (spawnCount % 5 == 0) {
-        if (interval > 100) {
+        
+    if(spawnCount % 5 == 0) {
+        if (interval > 500) {
+            console.log(interval)
             interval -= 100;
         }
         if (speed < .5) {
@@ -360,8 +546,8 @@ function addRandomAsteroid() {
 
 // Update ship's position based on key presses
 function updateAsteroids() {
-    if (isPaused) { return }
-    for (var i = 0; i < asteroids.length; ++i) {
+    if (isPaused) {return}
+    for (var i=0; i<asteroids.length; ++i) {
         if (asteroids[i].position.y < -10) {
             scene.remove(asteroids[i]);
             asteroids.splice(i, 1);
@@ -371,13 +557,24 @@ function updateAsteroids() {
     }
 }
 
-function updateenergyCount() {
-    document.getElementById('energy').textContent = 'energy: ' + energyCount;
+function updateEnergyCount() {
+    document.getElementById('energy').textContent = 'Energy: ' + energyCount;
+}
+
+function updateHealth() {
+    if (health > 1) {
+        health--;
+        document.getElementById('health').textContent = 'Health: ' + health;
+    } else {
+        health = 0;
+        document.getElementById('end-score').textContent = 'Score: ' + score;
+        endGame();
+    }
 }
 
 function updateScore() {
 
-    if (isPaused) { return }
+    if (isPaused) {return}
 
     score++
     document.getElementById('score').textContent = 'Score: ' + score;
@@ -393,6 +590,7 @@ function checkShipCollision() {
             // Remove the asteroid from the scene and from the asteroids array
             scene.remove(asteroid);
             asteroids.splice(i, 1);
+            updateHealth();
             return true;
         }
     }
@@ -429,11 +627,23 @@ function checkLaserCollision() {
                 // Decrement both counters to account for removal of elements
                 i--;
                 j--;
-                energy.add(energyLight);
+
+                energy.add(energyLight)
                 scene.add(energy);
                 energys.push(energy);
 
                 return true; // Exit the inner loop since laser can only hit one asteroid
+            }
+        }
+
+        if (special != undefined) {
+            const specialBox = new THREE.Box3().setFromObject(special);
+            if (laserBox.intersectsBox(specialBox)) {
+                scene.remove(special)
+                scene.remove(laser);
+                lasers.splice(i, 1);
+
+                handleSpecial()
             }
         }
     }
@@ -454,6 +664,7 @@ function shootLaser() {
     if (currentTime - lastShotTime < laserCooldownDuration || isPaused) {
         return; // Exit the function if still on cooldown or if the game is paused
     }
+
     const laserGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 16); // Adjust radius and height as needed
     const laserMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000 });
     const laserLight = new THREE.PointLight(0xff0000, 1, 5); // Adjust intensity and distance as needed
@@ -466,52 +677,52 @@ function shootLaser() {
         lasers.push(laser);
     } else if (laserCount == 2) {
         const laser1 = new THREE.Mesh(laserGeometry, laserMaterial);
-        laser1.add(laserLight);
         laser1.position.copy(ship.position); // Start laser from ship's position
+        laser1.add(laserLight);
         laser1.position.x -= 0.5
         scene.add(laser1);
         lasers.push(laser1);
 
         const laser2 = new THREE.Mesh(laserGeometry, laserMaterial);
-        laser2.add(laserLight);
         laser2.position.copy(ship.position); // Start laser from ship's position
+        laser2.add(laserLight);
         laser2.position.x += 0.5
         scene.add(laser2);
         lasers.push(laser2);
     } else if (laserCount == 3) {
         const laser1 = new THREE.Mesh(laserGeometry, laserMaterial);
-        laser1.add(laserLight);
         laser1.position.copy(ship.position); // Start laser from ship's position
+        laser1.add(laserLight);
         laser1.position.x -= 0.5
         scene.add(laser1);
         lasers.push(laser1);
 
         const laser2 = new THREE.Mesh(laserGeometry, laserMaterial);
-        laser2.add(laserLight);
         laser2.position.copy(ship.position); // Start laser from ship's position
+        laser2.add(laserLight);
         scene.add(laser2);
         lasers.push(laser2);
 
         const laser3 = new THREE.Mesh(laserGeometry, laserMaterial);
-        laser3.add(laserLight);
         laser3.position.copy(ship.position); // Start laser from ship's position
+        laser3.add(laserLight);
         laser3.position.x += 0.5
         scene.add(laser3);
         lasers.push(laser3);
     }
-
+ 
     lastShotTime = currentTime;
 }
 
 function updateLasers() {
-    for (let i = 0; i < lasers.length; i++) {
+    for(let i = 0; i < lasers.length; i++) {
         lasers[i].position.y += 0.1
     }
 }
 
 
 // Check collision between ship and asteroid
-function checkenergyCollision() {
+function checkEnergyCollision() {
     const shipBox = new THREE.Box3().setFromObject(ship);
     for (let i = 0; i < energys.length; i++) {
         const energy = energys[i];
@@ -526,7 +737,7 @@ function checkenergyCollision() {
             i--;
 
             energyCount++;
-            updateenergyCount();
+            updateEnergyCount();
 
             return true; // Exit the inner loop since laser can only hit one asteroid
         }
@@ -535,6 +746,60 @@ function checkenergyCollision() {
 }
 
 
+function createSpecialEvent() {
+    const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const textureLoader = new THREE.TextureLoader();
+    const texture = textureLoader.load('textures/question.png');
+    const boxMaterial = new THREE.MeshBasicMaterial({ map: texture });
+    special = new THREE.Mesh(boxGeometry, boxMaterial);
+
+    special.position.x = -18;
+    special.position.y = 5;
+    scene.add(special)
+}
+
+
+function updateSpecialEvent() {
+    special.position.x += 0.05;
+
+    if (special.position.x > 18) {
+        scene.remove(special)
+    }
+}
+
+function handleSpecial() {
+    isPaused = true;
+
+    let choice = Math.floor(Math.random() * 3)
+
+    console.log(questions, choice)
+
+    document.getElementById('special-question').textContent = questions[choice].question
+    document.getElementById('hiddenAnswer').value = questions[choice].answer
+
+    document.getElementById('special-display').style.display = 'block'
+
+    document.getElementById('special-submit').addEventListener('click', checkAnswer);
+}
+
+function checkAnswer() {
+
+    if (document.getElementById('special-answer').value == document.getElementById('hiddenAnswer').value) {
+        document.getElementById('special-display').style.display = 'none'
+        isPaused = false;
+        if (laserCount < 3) {
+            laserUp();
+        } else {
+            health += 6;
+            updateHealth();
+        }
+        animate();
+    } else {
+        document.getElementById('special-display').style.display = 'none'
+        isPaused = false;
+        animate();
+    }
+}
 
 
 // Render loop
@@ -550,18 +815,24 @@ function animate() {
 
         updateLasers();
 
+        if (score == 15) {
+            createSpecialEvent();
+        }
+
+        if (score > 15) {
+            updateSpecialEvent();
+        }
+
         // Check collision
         if (checkShipCollision()) {
             hits++;
-            console.log(hits);
-            // Here you can add actions to take when a collision occurs
         }
 
         if (checkLaserCollision()) {
             // Something
         }
 
-        checkenergyCollision();
+        checkEnergyCollision();
 
         // Render the scene
         renderer.render(scene, camera);
@@ -580,42 +851,38 @@ function speedUp() {
     if (energyCount >= 5) {
         shipSpeed += 0.01;
         energyCount -= 5
-        updateenergyCount();
+        updateEnergyCount();
         pauseGame();
+        document.getElementById('notEnough').style.display = 'none'
     } else {
-        alert("Not enough")
+        document.getElementById('notEnough').style.display = 'block'
     }
 }
 
 function laserCooldownDown() {
-    if (laserCooldownDuration > 0) {
-        laserCooldownDuration -= 100
+    if (energyCount >= 5) {
+        if (laserCooldownDuration > 0) {
+            laserCooldownDuration -= 100
+            document.getElementById('notEnough').style.display = 'none'
+        } else {
+            document.getElementById('laser-cooldown').style.display = 'none'
+        }
     } else {
-        document.getElementById('laser-cooldown').style.display = 'none'
+        document.getElementById('notEnough').style.display = 'block'
     }
 }
 
 function laserUp() {
     if (laserCount < 3) {
         laserCount += 1
-        updateSpaceship();
+        document.getElementById('notEnough').style.display = 'none'
+
+        scene.remove(ship)
+        ship = createSpaceship(texture);
+        ship.position.copy(shipPosition)
+        scene.add(ship);
+
     } else {
         document.getElementById('laser').style.display = 'none'
     }
-}
-
-function updateSpaceship(textureChoice) {
-    // Remove the existing ship from the scene
-    scene.remove(ship);
-
-    // Create a new ship with the updated laser count
-    ship = createSpaceship(textureChoice);
-    ship.position.z = 4;
-    scene.add(ship);
-}
-function updateShipTexture() {
-    const textureSelect = document.getElementById('texture-select');
-    const selectedTextureUrl = textureSelect.value;
-
-    updateSpaceship(selectedTextureUrl);
 }
