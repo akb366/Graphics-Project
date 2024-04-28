@@ -32,9 +32,10 @@ let isPaused = false;
 
 let spawnInterval;
 
+
 // Initialize ship's position
 let shipPosition = new THREE.Vector3(0, 0, 0);
-function createSpaceship() {
+function createSpaceship(textureChoice) {
     const shipGroup = new THREE.Group();
 
     // Create a geometry for the wedge shape
@@ -66,11 +67,36 @@ function createSpaceship() {
     wedgeGeometry.setIndex(indices);
     wedgeGeometry.computeVertexNormals();
     const textureLoader = new THREE.TextureLoader();
-    const shiptexture = textureLoader.load('textures/ship.jpg',function(texture) {
+    const rustyshiptexture = textureLoader.load('textures/rustymetal.jpg',function(texture) {
         texture.magFilter = THREE.LinearFilter; // Magnification filter
         texture.minFilter = THREE.LinearMipmapLinearFilter; // Minification filter
         texture.anisotropy = renderer.capabilities.getMaxAnisotropy(); // Anisotropic filtering for better quality
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;});
+        
+    const metalshiptexture = textureLoader.load('textures/metal.jpg',function(texture) {
+        texture.magFilter = THREE.LinearFilter; // Magnification filter
+        texture.minFilter = THREE.LinearMipmapLinearFilter; // Minification filter
+        texture.anisotropy = renderer.capabilities.getMaxAnisotropy(); // Anisotropic filtering for better quality
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;});
+        
+    const futureshiptexture = textureLoader.load('textures/spaceshiptexturefuture.jpg',function(texture) {
+        texture.magFilter = THREE.LinearFilter; // Magnification filter
+        texture.minFilter = THREE.LinearMipmapLinearFilter; // Minification filter
+        texture.anisotropy = renderer.capabilities.getMaxAnisotropy(); // Anisotropic filtering for better quality
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;});
+    let shiptexture;
+    if (textureChoice === 'rusty')
+    {
+        shiptexture = rustyshiptexture;
+    }
+    else if (textureChoice === 'metal')
+    {
+        shiptexture = metalshiptexture;
+    }
+    else if (textureChoice === 'future')
+    {
+        shiptexture = futureshiptexture;
+    }
     // Create a mesh with the geometry
     const wedgeMaterial = new THREE.MeshStandardMaterial({ map: shiptexture,metalness: .8, roughness: 0 });
     const wedgeMesh = new THREE.Mesh(wedgeGeometry, wedgeMaterial);
@@ -167,7 +193,7 @@ function init() {
     const ambientLight = new THREE.AmbientLight(0x404040);
     scene.add(ambientLight);
 
-    ship = createSpaceship();
+    ship = createSpaceship('rusty');
     ship.position.z = 4;
     scene.add(ship);
 
@@ -181,6 +207,7 @@ function init() {
     document.getElementById('speed-up').addEventListener("click", speedUp);
     document.getElementById('laser-cooldown').addEventListener("click", laserCooldownDown);
     document.getElementById('laser').addEventListener("click", laserUp);
+    document.getElementById('texture-select').addEventListener('change', updateShipTexture);
 
     // Start adding asteroids at regular intervals
     spawnInterval = setInterval(addRandomAsteroid, interval); // Add an asteroid every 3 seconds
@@ -577,12 +604,18 @@ function laserUp() {
     }
 }
 
-function updateSpaceship() {
+function updateSpaceship(textureChoice) {
     // Remove the existing ship from the scene
     scene.remove(ship);
 
     // Create a new ship with the updated laser count
-    ship = createSpaceship();
+    ship = createSpaceship(textureChoice);
     ship.position.z = 4;
     scene.add(ship);
+}
+function updateShipTexture() {
+    const textureSelect = document.getElementById('texture-select');
+    const selectedTextureUrl = textureSelect.value;
+
+    updateSpaceship(selectedTextureUrl);
 }
