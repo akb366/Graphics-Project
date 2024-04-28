@@ -6,9 +6,55 @@
 		<style>
 			body { margin: 0; }
 			canvas { display: block; }
+			/* Add any necessary CSS styles for your button and shop menu */
+			#shop-menu {
+				display: none; /* Initially hide the shop menu */
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				background-color: rgba(255, 255, 255, 0.8);
+				padding: 20px;
+			}
+
+			#gold {
+				position: absolute;
+				top: 10px;
+				left: 10px;
+				color: white;
+				font-family: Arial, sans-serif;
+				font-size: 20px;
+			}
+
+			#scoreArea {
+				position: absolute;
+				top: 50px;
+				left: 0;
+				right: 0;
+				margin-left: auto;
+				margin-right: auto;
+				font-size: 25px;
+				color: white;
+				width: 75px;
+			}
 		</style>
 	</head>
 	<body>
 		<script type="module" src="/main.js"></script>
+
+		<div id="gold">Gold: 0</div>
+		<div id="scoreArea">
+			<div id="score">Score:0</div>
+		</div>
+
+		<!-- Shop menu -->
+		<div id="shop-menu">
+			<!-- Add content for your shop menu, such as items available for purchase -->
+			<h2>Shop Menu</h2>
+			<button id="speed-up">Speed Up</button>
+			<button id="laser-cooldown">Laser Cooldown</button>
+			<button id="laser">Laser</button>
+			<!-- Add more items as needed -->
+		</div>
 	</body>
 </html>
